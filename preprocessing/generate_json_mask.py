@@ -3,12 +3,11 @@ import math
 import json
 import numpy as np
 from pycocotools.coco import COCO
-import baker
+import progressbar
 
 COCO_TO_OURS = [0, 15, 14, 17, 16, 5, 2, 6, 3, 7, 4, 11, 8, 12, 9, 13, 10]
 
 
-@baker.command
 def processing(ann_path, json_path, mask_dir, filelist_path, masklist_path):
     """
     ann_path is the path of COCO annotations.
@@ -27,16 +26,18 @@ def processing(ann_path, json_path, mask_dir, filelist_path, masklist_path):
     :return:
     """
     coco = COCO(ann_path)
+
     ids = list(coco.imgs.keys())
     lists = []
 
     filelist_fp = open(filelist_path, 'w')
     masklist_fp = open(masklist_path, 'w')
 
-    for i, img_id in enumerate(ids):
+    for i in progressbar.progressbar(range(len(ids))):
+        img_id = ids[i]
         ann_ids = coco.getAnnIds(imgIds=img_id)
-        img_anns = coco.loadAnns(ann_ids)
 
+        img_anns = coco.loadAnns(ann_ids)
         numPeople = len(img_anns)
         name = coco.imgs[img_id]['file_name']
         height = coco.imgs[img_id]['height']
@@ -137,25 +138,24 @@ def processing(ann_path, json_path, mask_dir, filelist_path, masklist_path):
                 raise Exception('crowd segments > 1')
             np.save(os.path.join(mask_dir, name.split('.')[0] + '.npy'), mask_miss)
             masklist_fp.write(os.path.join(mask_dir, name.split('.')[0] + '.npy') + '\n')
-        if i % 1000 == 0:
-            print "Processed {} of {}".format(i, len(ids))
+        # if i % 1000 == 0:
+            # print("Processed {} of {}".format(i, len(ids)))
 
     masklist_fp.close()
     filelist_fp.close()
-    print 'write json file'
 
     fp = open(json_path, 'w')
     fp.write(json.dumps(lists))
     fp.close()
 
-    print 'done!'
+    print('done!')
 
 
 if __name__ == '__main__':
-    main_dir = os.getcwd()
-    ann_path = '../' + main_dir + "/annotationstest/image_info_test2015.json"
-    json_path = '../' + main_dir + "dataset/test2015.json"
-    mask_dir = '../' + main_dir + '/dataset', '/mat'
-    filelist_path = '../' + main_dir + '/dataset', 'filelist.txt'
-    masklist_path = '../' + main_dir + '/dataset', 'masklist.txt'
+    main_dir = 'C:\\Users\\maddy\\OneDrive - Knights - University of Central Florida\\CAP5415-KeypointDetection\\'
+    ann_path = main_dir + "dataset\\COCO\\annotations\\person_keypoints_val2017.json"
+    json_path = main_dir + "dataset\\COCO\\test2015.json"
+    mask_dir = main_dir + 'dataset\\COCO\\mat'
+    filelist_path = main_dir + 'dataset\\COCO\\filelist.txt'
+    masklist_path = main_dir + 'dataset\\COCO\\masklist.txt'
     processing(ann_path, json_path, mask_dir, filelist_path, masklist_path)
