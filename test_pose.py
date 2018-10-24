@@ -10,11 +10,20 @@ import torch
 import pose_estimation
 import cv2
 
-limbSeq = [[3,4], [4,5], [6,7], [7,8], [9,10], [10,11], [12,13], [13,14], [1,2], [2,9], [2,12], [2,3], [2,6], \
-           [3,17],[6,18],[1,16],[1,15],[16,18],[15,17]]
+# find connection in the specified sequence, center 29 is in the position 15
+limbSeq = [[2,3], [2,6], [3,4], [4,5], [6,7], [7,8], [2,9], [9,10], \
+           [10,11], [2,12], [12,13], [13,14], [2,1], [1,15], [15,17], [1,16], \
+           [16,18], [3,17], [6,18]]
+# the middle joints heatmap correpondence
+mapIdx = [[31,32], [39,40], [33,34], [35,36], [41,42], [43,44], [19,20], [21,22], \
+          [23,24], [25,26], [27,28], [29,30], [47,48], [49,50], [53,54], [51,52], \
+          [55,56], [37,38], [45,46]]
+		  
+# limbSeq = [[3,4], [4,5], [6,7], [7,8], [9,10], [10,11], [12,13], [13,14], [1,2], [2,9], [2,12], [2,3], [2,6], \
+           # [3,17],[6,18],[1,16],[1,15],[16,18],[15,17]]
 
-mapIdx = [[19,20],[21,22],[23,24],[25,26],[27,28],[29,30],[31,32],[33,34],[35,36],[37,38],[39,40], \
-          [41,42],[43,44],[45,46],[47,48],[49,50],[51,52],[53,54],[55,56]]
+# mapIdx = [[19,20],[21,22],[23,24],[25,26],[27,28],[29,30],[31,32],[33,34],[35,36],[37,38],[39,40], \
+          # [41,42],[43,44],[45,46],[47,48],[49,50],[51,52],[53,54],[55,56]]
 
 colors = [[255, 0, 0], [255, 85, 0], [255, 170, 0], [255, 255, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0], \
           [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255], \
@@ -40,7 +49,7 @@ def construct_model(args):
     state_dict = model.state_dict()
     state_dict.update(new_state_dict)
     model.load_state_dict(state_dict)
-#    model = model.cuda()
+    model = model.cuda()
     model.eval()
 
     return model
@@ -100,10 +109,10 @@ def process(model, input_path):
         input_img = np.transpose(imgToTest_padded[:,:,:,np.newaxis], (3, 2, 0, 1)) # required shape (1, c, h, w)
 #        mask = np.ones((1, 1, input_img.shape[2] / stride, input_img.shape[3] / stride), dtype=np.float32)
         mask = np.ones((1, 1, input_img.shape[2] // stride, input_img.shape[3] // stride), dtype=np.float32)
-        #input_var = torch.autograd.Variable(torch.from_numpy(input_img).cuda())
-        input_var = torch.autograd.Variable(torch.from_numpy(input_img))
-        #mask_var = torch.autograd.Variable(torch.from_numpy(mask).cuda())
-        mask_var = torch.autograd.Variable(torch.from_numpy(mask))
+        input_var = torch.autograd.Variable(torch.from_numpy(input_img).cuda())
+        #input_var = torch.autograd.Variable(torch.from_numpy(input_img))
+        mask_var = torch.autograd.Variable(torch.from_numpy(mask).cuda())
+        #mask_var = torch.autograd.Variable(torch.from_numpy(mask))
 
         # get the features
         vec1, heat1, vec2, heat2, vec3, heat3, vec4, heat4, vec5, heat5, vec6, heat6 = model(input_var, mask_var)
@@ -127,8 +136,9 @@ def process(model, input_path):
     all_peaks = []   # all of the possible points by classes.
     peak_counter = 0
 
-    for part in range(1, 19):
-        map_ori = heatmap_avg[:, :, part]
+#    for part in range(1, 19):
+    for part in range(19-1):
+       	map_ori = heatmap_avg[:, :, part]
         map = gaussian_filter(map_ori, sigma=3)
 
         map_left = np.zeros(map.shape)
@@ -156,7 +166,8 @@ def process(model, input_path):
     connection_all = [] # save all of the possible lines by classes.
     special_k = []      # save the lines, which haven't legal points.
     mid_num = 10        # could adjust to accelerate (small) or improve accuracy(large).
-
+	
+	
     for k in range(len(mapIdx)):
 
         score_mid = paf_avg[:, :, [x - 19 for x in mapIdx[k]]]
@@ -302,10 +313,10 @@ def process(model, input_path):
 
 if __name__ == '__main__':
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', type=str, required=True, help='input image')
-    parser.add_argument('--output', type=str, default='result.png', help='output image')
+    parser.add_argument('--output', type=str, default='D:/coco/Tests/small_test_test.png', help='output image')
     parser.add_argument('--model', type=str, default='D:\coco\coco_pose_iter_440000.pth.tar', help='path to the weights file')
 
     args = parser.parse_args()
