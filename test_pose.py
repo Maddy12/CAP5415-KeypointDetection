@@ -37,10 +37,10 @@ thre_point = 0.15
 thre_line = 0.05
 stickwidth = 4
 
-def construct_model(args):
+def construct_model(model_path):
 
     model = pose_estimation.PoseModel(num_point=19, num_vector=19)
-    state_dict = torch.load(args.model)['state_dict']
+    state_dict = torch.load(model_path)['state_dict']
     from collections import OrderedDict
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
@@ -49,7 +49,7 @@ def construct_model(args):
     state_dict = model.state_dict()
     state_dict.update(new_state_dict)
     model.load_state_dict(state_dict)
-    model = model.cuda()
+    # model = model.cuda()
     model.eval()
 
     return model
@@ -87,9 +87,13 @@ def normalize(origin_img):
     return origin_img
 
 def process(model, input_path):
+    """
 
+    :param model:
+    :param input_path:
+    :return:
+    """
     origin_img = cv2.imread(input_path)
-    print(origin_img.shape)
     normed_img = normalize(origin_img)
 
     height, width, _ = normed_img.shape
@@ -109,9 +113,9 @@ def process(model, input_path):
         input_img = np.transpose(imgToTest_padded[:,:,:,np.newaxis], (3, 2, 0, 1)) # required shape (1, c, h, w)
 #        mask = np.ones((1, 1, input_img.shape[2] / stride, input_img.shape[3] / stride), dtype=np.float32)
         mask = np.ones((1, 1, input_img.shape[2] // stride, input_img.shape[3] // stride), dtype=np.float32)
-        input_var = torch.autograd.Variable(torch.from_numpy(input_img).cuda())
+        input_var = torch.autograd.Variable(torch.from_numpy(input_img))  # .cuda())
         #input_var = torch.autograd.Variable(torch.from_numpy(input_img))
-        mask_var = torch.autograd.Variable(torch.from_numpy(mask).cuda())
+        mask_var = torch.autograd.Variable(torch.from_numpy(mask)) #  .cuda())
         #mask_var = torch.autograd.Variable(torch.from_numpy(mask))
 
         # get the features
@@ -311,29 +315,29 @@ def process(model, input_path):
 
     return canvas
 
+
+def run(image_dir, output_dir, model_path):
+    """
+
+    :param str image_dir:
+    :param str output_dir:
+    :param str model_path:
+    :return:
+    """
+    images = os.listdir(image_dir)
+    model = construct_model(model_path)
+    for image in images:
+        tic = time.time()
+        print('start processing...')
+        # generate image with body parts
+        canvas = process(model, os.path.join(image_dir, image))
+        toc = time.time()
+        print ('processing time is %.5f' % (toc - tic))
+        cv2.imwrite(os.path.join(output_dir, image), canvas)
+
+
 if __name__ == '__main__':
-
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--image', type=str, required=True, help='input image')
-    parser.add_argument('--output', type=str, default='D:/coco/Tests/small_test_test.png', help='output image')
-    parser.add_argument('--model', type=str, default='D:\coco\coco_pose_iter_440000.pth.tar', help='path to the weights file')
-
-    args = parser.parse_args()
-    input_image = args.image
-    output = args.output
-
-
-    # load model
-    model = construct_model(args)
-
-    tic = time.time()
-    print('start processing...')
-
-    # generate image with body parts
-    canvas = process(model, input_image)
-
-    toc = time.time()
-    print ('processing time is %.5f' % (toc - tic))
-
-    cv2.imwrite(output, canvas)
+    image_dir = 'Tests/'
+    model_path = 'coco_pose_iter_440000.pth.tar'
+    output_dir = 'results/'
+    run(image_dir, output_dir, model_path)
