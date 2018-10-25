@@ -8,6 +8,8 @@ sys.path.append('..')
 import torch
 import pose_estimation
 import cv2
+from collections import OrderedDict
+
 
 def construct_model(model_path):
     model = pose_estimation.PoseModel(num_point=19, num_vector=19)
@@ -32,13 +34,16 @@ with torch.autograd.no_grad():
     model_path = main_dir + r'\coco_pose_iter_440000.pth.tar'
 
     state_dict = torch.load(model_path)['state_dict']
-    # model = get_model(trunk='vgg19')
-    model = construct_model(model_path)
-    model = torch.nn.DataParallel(model).cuda()
-    model.load_state_dict(state_dict)
+    new_state_dict = OrderedDict()
+    for key in state_dict.keys():
+        new_state_dict['module.'+key] = state_dict[key]
+    model = get_model(trunk='vgg19')
+    # model = construct_model(model_path)
+    model = torch.nn.DataParallel(model)#.cuda()
+    model.load_state_dict(new_state_dict)
     model.eval()
     model.float()
-    model = model.cuda()
+    # model = model.cuda()
 
     # The choice of image preprocessing include: 'rtpose', 'inception', 'vgg' and 'ssd'.
     # If you use the converted model from caffe, it is 'rtpose' preprocess, the model trained in
@@ -49,6 +54,6 @@ with torch.autograd.no_grad():
     anno_path = main_dir + r'\dataset\COCO\annotations'
     run_eval(image_dir=image_dir, anno_dir=anno_path, vis_dir='/data/coco/vis',
              image_list_txt='image_info_val2014_1k.txt',
-             model=model, preprocess='vgg')
+             model=model, preprocess='rtpose')
 
 
