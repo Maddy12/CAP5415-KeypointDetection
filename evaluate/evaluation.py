@@ -39,11 +39,11 @@ with torch.autograd.no_grad():
         new_state_dict['module.'+key] = state_dict[key]
     model = get_model(trunk='vgg19')
     # model = construct_model(model_path)
-    model = torch.nn.DataParallel(model)#.cuda()
+    model = torch.nn.DataParallel(model).cuda()
     model.load_state_dict(new_state_dict)
     model.eval()
     model.float()
-    # model = model.cuda()
+    model = model.cuda()
 
     # The choice of image preprocessing include: 'rtpose', 'inception', 'vgg' and 'ssd'.
     # If you use the converted model from caffe, it is 'rtpose' preprocess, the model trained in

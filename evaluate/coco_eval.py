@@ -297,8 +297,8 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
 
-        vis_path = os.path.join(vis_dir, img_paths[i])
-        cv2.imwrite(vis_path, to_plot)
+        # vis_path = os.path.join(vis_dir, img_paths[i])
+        # cv2.imwrite(vis_path, to_plot)
         # subset indicated how many peoples foun in this image.
         append_result(img_ids[i], subset, candidate, outputs)
 
