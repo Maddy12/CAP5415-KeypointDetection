@@ -30,8 +30,9 @@ def construct_model(model_path):
 # Notice, if you using the
 with torch.autograd.no_grad():
     # this path is with respect to the root of the project
-    main_dir = r'C:\Users\maddy\OneDrive - Knights - University of Central Florida\CAP5415-KeypointDetection'
-    model_path = main_dir + r'\coco_pose_iter_440000.pth.tar'
+    # main_dir = r'C:\Users\maddy\OneDrive - Knights - University of Central Florida\CAP5415-KeypointDetection'
+    main_dir = '/home/CAP5415-KeypointDetection'
+    model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
 
     state_dict = torch.load(model_path)['state_dict']
     new_state_dict = OrderedDict()
@@ -48,12 +49,14 @@ with torch.autograd.no_grad():
     # The choice of image preprocessing include: 'rtpose', 'inception', 'vgg' and 'ssd'.
     # If you use the converted model from caffe, it is 'rtpose' preprocess, the model trained in
     # this repo used 'vgg' preprocess
-    image_dir = main_dir + r'\dataset\COCO\images'
-    model_path = main_dir + r'\coco_pose_iter_440000.pth.tar'
-    output_dir = r'\results'
-    anno_path = main_dir + r'\dataset\COCO\annotations'
+    image_dir = main_dir + '/dataset/COCO/images'
+    model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
+    output_dir = '/results'
+    anno_path = main_dir + '/dataset/COCO/'
+    vis_dir = main_dir + '/dataset/COCO/vis'
     run_eval(image_dir=image_dir, anno_dir=anno_path, vis_dir='/data/coco/vis',
              image_list_txt='image_info_val2014_1k.txt',
+    #         image_list_txt='image_info_val2014_10.txt',
              model=model, preprocess='rtpose')
 
 
