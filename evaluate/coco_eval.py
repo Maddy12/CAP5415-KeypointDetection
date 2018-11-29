@@ -5,14 +5,17 @@ import cv2
 import numpy as np
 import json
 import pandas as pd
+import torch
+import sys
+
+#COCO
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-import torch
-import sys
+# local
 from datasets.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
-from post import decode_pose
-import im_transform
+from multipose_utils.generate_pose import decode_pose
+from multipose_utils import im_transform
 
 '''
 MS COCO annotation order:
@@ -92,6 +95,7 @@ def get_coco_val(file_path):
 
 def get_outputs(multiplier, img, model, preprocess):
     """Computes the averaged heatmap and paf for the given image
+    Step 1.
     :param multiplier:
     :param origImg: numpy array, the image being processed
     :param model: pytorch model
@@ -255,6 +259,7 @@ def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
 
 def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
     """Run the evaluation on the test set and report mAP score
+    Get output of model for original image and flipped image than average them.
     :param model: the model to test
     :returns: float, the reported mAP score
     """
