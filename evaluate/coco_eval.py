@@ -9,11 +9,11 @@ import torch
 import sys
 
 #COCO
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
+from multipose_utils.dataset import COCO
+from multipose_utils.coco.PythonAPI.pycocotools.cocoeval import COCOeval
 
 # local
-from datasets.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
+from multipose_utils.dataset_utils.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
 from multipose_utils.generate_pose import decode_pose
 from multipose_utils import im_transform
 
@@ -141,6 +141,7 @@ def get_outputs(multiplier, img, model, preprocess):
     heatmaps = output2.cpu().data.numpy().transpose(0, 2, 3, 1)
     pafs = output1.cpu().data.numpy().transpose(0, 2, 3, 1)
 
+   # Resizes the image
     for m in range(len(multiplier)):
         scale = multiplier[m]
         inp_size = scale * img.shape[0]
