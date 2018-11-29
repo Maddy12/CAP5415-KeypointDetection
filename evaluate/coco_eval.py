@@ -62,9 +62,6 @@ def eval_coco(outputs, dataDir, imgIds):
     cocoEval.accumulate()
     cocoEval.summarize()
     # os.remove('results.json')
-    #with open('/home/CAP5415-KeypointDetection/results.txt', 'w') as f:
-     #   f.write(cocoEval.stats[0])
-    print(cocoEval.stats)
     # return Average Precision
     return cocoEval.stats[0]
 
@@ -179,7 +176,7 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
     for ridxPred in range(len(person_to_joint_assoc)):
         one_result = {
             "image_id": 0,
-            "category_id": 1,
+            "category_id": 1,  # prefixed to 1
             "keypoints": [],
             "score": 0
         }
@@ -300,8 +297,8 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
 
-        vis_path = os.path.join(vis_dir, img_paths[i])
-        cv2.imwrite(vis_path, to_plot)
+        # vis_path = os.path.join(vis_dir, img_paths[i])
+        # cv2.imwrite(vis_path, to_plot)
         # subset indicated how many peoples foun in this image.
         append_result(img_ids[i], subset, candidate, outputs)
 
