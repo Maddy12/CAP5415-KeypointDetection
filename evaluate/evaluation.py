@@ -1,5 +1,5 @@
 from coco_eval import run_eval
-from rtpose_vgg import get_model, use_vgg
+from multipose_utils.multipose_model import get_model
 from torch import load
 import sys
 sys.path.append('..')
@@ -23,7 +23,7 @@ with torch.autograd.no_grad():
     model.load_state_dict(new_state_dict)
     model.eval()
     model.float()
-    model = model#.cuda()
+    model = model.cuda()
 
     # The choice of image preprocessing include: 'rtpose', 'inception', 'vgg' and 'ssd'.
     # If you use the converted model from caffe, it is 'rtpose' preprocess, the model trained in

@@ -93,7 +93,7 @@ def get_coco_val(file_path):
     return image_ids, file_paths, heights, widths
 
 
-def get_outputs(multiplier, img, model, preprocess):
+def get_outputs(multiplier, img, model, preprocess, cuda=True):
     """Computes the averaged heatmap and paf for the given image
     Step 1.
     :param multiplier:
@@ -119,7 +119,7 @@ def get_outputs(multiplier, img, model, preprocess):
         # padding
         im_croped, im_scale, real_shape = im_transform.crop_with_factor(
             img, inp_size, factor=8, is_ceil=True)
-
+        assert preprocess in ['rtpose', 'vgg', 'inception', 'ssd'], "Please provide a valid preprocessig param"
         if preprocess == 'rtpose':
             im_data = rtpose_preprocess(im_croped)
 
@@ -135,7 +135,10 @@ def get_outputs(multiplier, img, model, preprocess):
         batch_images[m, :, :im_data.shape[1], :im_data.shape[2]] = im_data
 
     # several scales as a batch
-    batch_var = torch.from_numpy(batch_images).cuda().float()
+    if cuda:
+        batch_var = torch.from_numpy(batch_images).cuda().float()
+    else:
+        batch_var = torch.from_numpy(batch_images).float()
     predicted_outputs, _ = model(batch_var)
     output1, output2 = predicted_outputs[-2], predicted_outputs[-1]
     heatmaps = output2.cpu().data.numpy().transpose(0, 2, 3, 1)
@@ -252,8 +255,7 @@ def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
     flipped_paf[:, :, swap_paf[1::2]] = flipped_paf[:, :, swap_paf[1::2]]
     flipped_paf[:, :, swap_paf[::2]] = -flipped_paf[:, :, swap_paf[::2]]
     averaged_paf = (normal_paf + flipped_paf[:, :, swap_paf]) / 2.
-    averaged_heatmap = (
-                               normal_heat + flipped_heat[:, ::-1, :][:, :, swap_heat]) / 2.
+    averaged_heatmap = (normal_heat + flipped_heat[:, ::-1, :][:, :, swap_heat]) / 2.
 
     return averaged_paf, averaged_heatmap
 

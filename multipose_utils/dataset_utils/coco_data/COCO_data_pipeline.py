@@ -22,6 +22,7 @@ first 2644 of val2014 marked by 'isValidation = 1', as our minval dataset.
 So all training data have 82783+40504-2644 = 120643 samples
 '''
 
+
 class Cocokeypoints(Dataset):
     def __init__(self, root, mask_dir, index_list, data, inp_size, feat_stride, preprocess='rtpose', transform=None,
                  target_transform=None, params_transform=None):

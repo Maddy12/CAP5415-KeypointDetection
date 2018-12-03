@@ -274,3 +274,18 @@ def use_vgg(model, model_path, trunk):
     state.update(weights_load)
     model.load_state_dict(state)
     print('load imagenet pretrained model: {}'.format(model_path))
+
+
+def build_pretrained_model(path='multipose_utils/multipose_model/coco_pose_iter_440000.pth.tar'):
+    with torch.autograd.no_grad():
+        state_dict = torch.load(path)['state_dict']
+        new_state_dict = OrderedDict()
+        for key in state_dict.keys():
+            new_state_dict['module.' + key] = state_dict[key]
+        model = get_model(trunk='vgg19')
+        model = torch.nn.DataParallel(model).cuda()
+        model.load_state_dict(new_state_dict)
+        model.eval()
+        model.float()
+        model = model.cuda()
+        return model

@@ -1,90 +1,64 @@
 import torch
 import torch.nn as nn
+import cv2
+
+# Local
 from multipose_utils.generate_pose import *
+from multipose_utils import generate_pose
+from evaluate.coco_eval import *
 
 
-class RegionProposal():
-    def __init__(self, output1, output2):
+class RegionProposal:
+    def __init__(self, output1, output2, img_orig, model):
+        super(RegionProposal, self).__init__()
         """
         To get heatmaps and pafs:
             heatmaps = output2.cpu().data.numpy().transpose(0, 2, 3, 1)
             pafs = output1.cpu().data.numpy().transpose(0, 2, 3, 1)
-        :param output1: Multipose model output 1
-        :param output2: Multipose model output 2
+        :param output1: Multi-pose model output 1
+        :param output2: Multi-pose model output 2
         """
-        self.paf = output1
-        self.heatmaps = output2  # heatmap
+        self.pafs = output1.cpu().detach().numpy()
+        self.heatmaps = output2.cpu().detach().numpy()  # heatmap
         self.param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
+        self.num_joints = NUM_JOINTS
+        self.num_limbs = NUM_LIMBS
+        self.oriImg = cv2.imread(img_orig)
+        self.model = model
+        self.preprocess = 'vgg'
+
+    def preprocess_img(self):
+        shape_dst = np.min(self.oriImg.shape[0:2])
+
+        # Get results of original image
+        multiplier = get_multiplier(self.oriImg)
+        orig_paf, orig_heat = get_outputs(
+            multiplier, self.oriImg, self.model, self.preprocess)
+
+        # Get results of flipped image
+        swapped_img = self.oriImg[:, ::-1, :]
+        flipped_paf, flipped_heat = get_outputs(multiplier, swapped_img,
+                                                self.model, self.preprocess)
+
+        # compute averaged heatmap and paf
+        paf, heatmap = handle_paf_and_heat(
+            orig_heat, flipped_heat, orig_paf, flipped_paf)
+
+        # choose which post-processing to use, our_post_processing
+        # got slightly higher AP but is slow.
+        param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
+        canvas, to_plot, candidate, subset = decode_pose(
+            self.oriImg, param, heatmap, paf)
+        return {'paf': paf, 'heatmap': heatmap, 'canvas':canvas, 'to_plot':to_plot,
+                'candidate':candidate, 'subset':subset}
 
     def forward(self):
-        #TODO
-
-    def NMS(self, upsampFactor=1., bool_refine_center=True, bool_gaussian_filt=False):
-        """
-        From https://github.com/tensorboy/pytorch_Realtime_Multi-Person_Pose_Estimation
-        NonMaximaSuppression: find peaks (local maxima) in a set of grayscale images
-        :param heatmaps: set of grayscale images on which to find local maxima (3d np.array,
-        with dimensions image_height x image_width x num_heatmaps)
-        :param upsampFactor: Size ratio between CPM heatmap output and the input image size.
-            Eg: upsampFactor=16 if original image was 480x640 and heatmaps are 30x40xN
-        :param bool_refine_center: Flag indicating whether:
-            - False: Simply return the low-res peak found upscaled by upsampFactor (subject to grid-snap)
-            - True: (Recommended, very accurate) Upsample a small patch around each low-res peak and
-        fine-tune the location of the peak at the resolution of the original input image
-        :param bool_gaussian_filt: Flag indicating whether to apply a 1d-GaussianFilter (smoothing)
-        to each upsampled patch before fine-tuning the location of each peak.
-        :return: a NUM_JOINTS x 4 np.array where each row represents a joint type (0=nose, 1=neck...)
-        and the columns indicate the {x,y} position, the score (probability) and a unique id (counter)
-        """
-        joint_list_per_joint_type = []
-        cnt_total_joints = 0
-
-        # For every peak found, win_size specifies how many pixels in each
-        # direction from the peak we take to obtain the patch that will be
-        # upsampled. Eg: win_size=1 -> patch is 3x3; win_size=2 -> 5x5
-        # (for BICUBIC interpolation to be accurate, win_size needs to be >=2!)
-        win_size = 2
-
-        for joint in range(NUM_JOINTS):
-            map_orig = self.heatmaps[:, :, joint]
-            peak_coords = find_peaks(self.param, map_orig)
-            peaks = np.zeros((len(peak_coords), 4))
-            for i, peak in enumerate(peak_coords):
-                if bool_refine_center:
-                    x_min, y_min = np.maximum(0, peak - win_size)
-                    x_max, y_max = np.minimum(
-                        np.array(map_orig.T.shape) - 1, peak + win_size)
-
-                    # Take a small patch around each peak and only upsample that
-                    # tiny region
-                    patch = map_orig[y_min:y_max + 1, x_min:x_max + 1]
-                    map_upsamp = cv2.resize(
-                        patch, None, fx=upsampFactor, fy=upsampFactor, interpolation=cv2.INTER_CUBIC)
-
-                    # Gaussian filtering takes an average of 0.8ms/peak (and there might be
-                    # more than one peak per joint!) -> For now, skip it (it's
-                    # accurate enough)
-                    map_upsamp = gaussian_filter(
-                        map_upsamp, sigma=3) if bool_gaussian_filt else map_upsamp
-
-                    # Obtain the coordinates of the maximum value in the patch
-                    location_of_max = np.unravel_index(
-                        map_upsamp.argmax(), map_upsamp.shape)
-                    # Remember that peaks indicates [x,y] -> need to reverse it for
-                    # [y,x]
-                    location_of_patch_center = compute_resized_coords(
-                        peak[::-1] - [y_min, x_min], upsampFactor)
-                    # Calculate the offset wrt to the patch center where the actual
-                    # maximum is
-                    refined_center = (location_of_max - location_of_patch_center)
-                    peak_score = map_upsamp[location_of_max]
-                else:
-                    refined_center = [0, 0]
-                    # Flip peak coordinates since they are [x,y] instead of [y,x]
-                    peak_score = map_orig[tuple(peak[::-1])]
-                peaks[i, :] = tuple([int(round(x)) for x in compute_resized_coords(
-                    peak_coords[i], upsampFactor) + refined_center[::-1]]) + (peak_score, cnt_total_joints)
-                cnt_total_joints += 1
-            joint_list_per_joint_type.append(peaks)
-
-        return joint_list_per_joint_type
+        joint_list_per_joint_type = NMS(self.param, self.heatmaps)
+        joint_list = np.array([tuple(peak) + (joint_type,) for joint_type, joint_peaks in
+                               enumerate(joint_list_per_joint_type) for peak in joint_peaks])
+        paf_upsamp = cv2.resize(self.pafs, (self.img_orig.shape[1], self.img_orig.shape[0]),
+                                interpolation=cv2.INTER_CUBIC)
+        connected_limbs = find_connected_joints(self.param, paf_upsamp, joint_list_per_joint_type)
+        person_to_joint_assoc = group_limbs_of_same_person(
+            connected_limbs, joint_list)
+        return person_to_joint_assoc

@@ -26,7 +26,7 @@ def vgg_preprocess(image):
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
 
-    preprocessed_img = image.copy()[:, :, ::-1]
+    preprocessed_img = image.copy()[:, :, ::-1]  # Flips the image column 1 and column 3
     for i in range(3):
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] - means[i]
         preprocessed_img[:, :, i] = preprocessed_img[:, :, i] / stds[i]
