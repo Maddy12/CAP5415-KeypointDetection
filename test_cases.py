@@ -28,20 +28,26 @@ person_to_joint_assoc = [[-1, 3, 7, 11, 14, 18,
                           7.68753984, 7]]
 
 def test_outputs(model):
-    heatmap = torch.load('output2.pt')
-    paf = torch.load('output1.pt')
-    # model = get_model()
+    # heatmap = torch.load('output2.pt')
+    # paf = torch.load('output1.pt')
+    # # model = get_model()
     img = cv2.imread('ski.jpg')
-    means = [0.485, 0.456, 0.406]
-    stds = [0.229, 0.224, 0.225]
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(means, stds)])
-    batch = torch.zeros([1, 3, img.shape[0], img.shape[1]])
-    batch[0, :, :, :] = transform(img)
-    (output1, output2), _ = model(batch)
+    # means = [0.485, 0.456, 0.406]
+    # stds = [0.229, 0.224, 0.225]
+    # transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(means, stds)])
+    # batch = torch.zeros([1, 3, img.shape[0], img.shape[1]])
+    # batch[0, :, :, :] = transform(img)
+    # (output1, output2), _ = model(batch)
+    output2 = torch.load('output2.pt')
+    output1 = torch.load('output1.pt')
     output2 = output2.transpose(1, 2).transpose(2, 3)
     output1 = output1.transpose(1, 2).transpose(2, 3)
-    one_heatmap = output2[1, :, :, :]
+    one_heatmap = output2[0, :, :, :]
+    one_paf = output1[0, :, :, :]
     param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
+    joint_list_per_joint_type = NMS(param, one_heatmap.detach().numpy())
+    persons, joint_list = get_person_to_join_assoc(img, param, one_heatmap.detach().numpy(), one_paf.detach().numpy())
+    torch.from_numpy(persons[0]).float()
     return output1, output2
 
 
