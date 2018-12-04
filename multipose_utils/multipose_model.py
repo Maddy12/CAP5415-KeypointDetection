@@ -276,17 +276,23 @@ def use_vgg(model, model_path, trunk):
     print('load imagenet pretrained model: {}'.format(model_path))
 
 
-def build_pretrained_model(path='multipose_utils/multipose_model/coco_pose_iter_440000.pth.tar', cuda=True):
+def get_multipose_model(model_path, cuda=True):
+    # Notice, if you using the
     with torch.autograd.no_grad():
-        state_dict = torch.load(path)['state_dict']
-        new_state_dict = OrderedDict()
-        for key in state_dict.keys():
-            new_state_dict['module.' + key] = state_dict[key]
+        # this path is with respect to the root of the project
+        state_dict = torch.load(model_path)['state_dict']
         model = get_model(trunk='vgg19')
-        model = torch.nn.DataParallel(model)
-        model.load_state_dict(new_state_dict)
+        if cuda:
+            model = nn.DataParallel(model).cuda()
+            model.load_state_dict(state_dict)
+            model = torch.nn.DataParallel(model)
+            model = model.cuda()
+        else:
+            model = model.to('cpu')
+            new_state_dict = OrderedDict()
+            for key in state_dict.keys():
+                new_state_dict[key.replace('module.', '')] = state_dict[key]
+            model.load_state_dict(new_state_dict)
         model.eval()
         model.float()
-        if cuda:
-            model = model.cuda()
-        return model
+    return model

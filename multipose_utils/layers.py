@@ -8,8 +8,8 @@ from multipose_utils.generate_pose import *
 from evaluate.coco_eval import *
 
 
-class RegionProposal:
-    def __init__(self, output1, output2, img_origs, model):
+class RegionProposal(nn.Module):
+    def __init__(self, output1, output2, oriImg, model):
         super(RegionProposal, self).__init__()
         """
         To get heatmaps and pafs:
@@ -20,13 +20,15 @@ class RegionProposal:
         :param img_origs: List of image paths
         :param model: Model
         """
-        self.pafs = output1.transpose(1, 2).transpose(2, 3)
-        self.heatmaps = output2.transpose(1, 2).transpose(2, 3)
+        self.pafs = output1.transpose(0,2 ).transpose(0,1)  # .transpose(1, 2).transpose(2, 3)
+        self.heatmaps = output2.transpose(0,2 ).transpose(0,1).shape  # .transpose(1, 2).transpose(2, 3)
         self.param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         self.num_joints = NUM_JOINTS
         self.num_limbs = NUM_LIMBS
-        self.oriImgs = img_origs
+        self.oriImg = oriImg
         self.model = model
+        self.oriImg_path = oriImg
+        self.oriImg = cv2.imread(oriImg)
         self.preprocess = 'vgg'
         self.buffer_vert = 10
         self.buffer_horiz = 5
@@ -41,29 +43,27 @@ class RegionProposal:
         Then transforms the resulting image region in the appropriate input dimensions for the resnet classifier.
         :return:
         """
-        outputs = list()
-        for i, (paf, heatmap) in enumerate(zip(self.pafs, self.heatmaps)):
-            img = cv2.imread(self.oriImgs[i])
-            persons, joint_list = get_person_to_join_assoc(img, self.param,
-                                               heatmap.detach().numpy(), paf.detach().numpy())
-            persons = torch.from_numpy(persons).float()
-            regions, bounds = self.find_regions(img, joint_list, persons)
-            normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            final_transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize,
-            ])
-            regions = torch.stack([final_transform(Image.fromarray(region)) for region in regions])
-            y_pred = self.model(regions)
-            preds = np.argmax(y_pred.detach().numpy(), axis=1)
-            idx = np.argwhere(np.asarray(preds))
-            filtered = persons[idx]
-            filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
-            to_plot, canvas = plot_pose(img, joint_list, filtered)
-            append_result(self.oriImgs[i], filtered, joint_list, outputs)
-        return outputs  # this goes into coco_eval 
+        persons, joint_list = get_person_to_join_assoc(self.oriImg, self.param,
+                                           self.heatmap.detach().numpy(), self.paf.detach().numpy())
+        persons = torch.from_numpy(persons).float()
+        regions, bounds = self.find_regions(self.oriImg, joint_list, persons)
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        final_transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])
+        regions = torch.stack([final_transform(Image.fromarray(region)) for region in regions])
+        y_pred = self.model(regions)
+        preds = np.argmax(y_pred.detach().numpy(), axis=1)
+        idx = np.argwhere(np.asarray(preds))
+        filtered = persons[idx]
+        filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
+        # to_plot, canvas = plot_pose(self.oriImg, joint_list, filtered)
+        # append_result(self.oriImg_path, filtered, joint_list, outputs)
+        # return outputs  # this goes into coco_eval
+        return self.oriImg_path, filtered, joint_list
 
     def find_regions(self, img_orig, joint_list, person_to_joint_assoc):
         """

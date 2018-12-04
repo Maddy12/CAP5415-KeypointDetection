@@ -304,6 +304,7 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
+        #to_plot, canvas, joint_list, person_to_joint_assoc
 
         # vis_path = os.path.join(vis_dir, img_paths[i])
         # cv2.imwrite(vis_path, to_plot)
