@@ -28,6 +28,8 @@ class RegionProposal:
         self.oriImgs = img_origs
         self.model = model
         self.preprocess = 'vgg'
+        self.buffer_vert = 10
+        self.buffer_horiz = 5
         self.joint_to_limb_heatmap_relationship = [
             [1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [1, 8], [8, 9], [9, 10],
             [1, 11], [11, 12], [12, 13], [1, 0], [0, 14], [14, 16], [0, 15], [15, 17],
@@ -39,6 +41,7 @@ class RegionProposal:
         Then transforms the resulting image region in the appropriate input dimensions for the resnet classifier.
         :return:
         """
+        outputs = list()
         for i, (paf, heatmap) in enumerate(zip(self.pafs, self.heatmaps)):
             img = cv2.imread(self.oriImgs[i])
             persons, joint_list = get_person_to_join_assoc(img, self.param,
@@ -53,12 +56,19 @@ class RegionProposal:
                 normalize,
             ])
             regions = torch.stack([final_transform(Image.fromarray(region)) for region in regions])
-            output = self.model(regions)
-            # TODO
+            y_pred = self.model(regions)
+            preds = np.argmax(y_pred.detach().numpy(), axis=1)
+            idx = np.argwhere(np.asarray(preds))
+            filtered = persons[idx]
+            filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
+            to_plot, canvas = plot_pose(img, joint_list, filtered)
+            append_result(self.oriImgs[i], filtered, joint_list, outputs)
+        return outputs  # this goes into coco_eval 
 
     def find_regions(self, img_orig, joint_list, person_to_joint_assoc):
         """
-        Gets a bounded box of a person and the image.
+        Find regions of potential humans by fisding the the max and min points with respect  to the x and y direction
+        for each delcareed human then produce the region of the image associated with those points
         :param img_orig:
         :param joint_list:
         :param person_to_joint_assoc:
@@ -85,6 +95,25 @@ class RegionProposal:
                     minX = int(min(minX, joint[0]))
                     maxY = int(max(maxY, joint[1]))
                     minY = int(min(minY, joint[1]))
+                    # Put a buffer around the potential humans
+                    maxX = maxX + self.buffer_horiz
+                    minX = minX - self.buffer_horiz
+                    maxY = maxY + self.buffer_vert
+                    minY = minY - self.buffer_vert
+
+                    if maxX > img_orig.shape[1]:
+                        maxX = img_orig.shape[1]
+                    if minX < 0:
+                        minX = 0
+                    if maxY > img_orig.shape[0]:
+                        maxY = img_orig.shape[0]
+                    if minY < 0:
+                        minY = 0
+
+                    if maxX == minX:
+                        maxX = maxX + 1
+                    if maxY == minY:
+                        maxY = maxY + 1
 
             regions.append(img_orig[minY:maxY, minX:maxX, :])
             bounds.append([minX, maxX, minY, maxY])

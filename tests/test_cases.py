@@ -9,6 +9,7 @@ from multipose_utils.dataset_utils.coco_data.preprocessing import vgg_preprocess
 from multipose_utils import im_transform
 from multipose_utils.multipose_model import get_model
 from multipose_utils.generate_pose import *
+from multipose_utils.regions import find_regions
 
 person_to_joint_assoc = [[-1, 3, 7, 11, 14, 18,
                           21, 23, 26, 31, -1, 38,
@@ -26,6 +27,21 @@ person_to_joint_assoc = [[-1, 3, 7, 11, 14, 18,
                           -1, -1, 27, 32, -1, -1,
                           -1, -1, -1, -1, 50, -1,
                           7.68753984, 7]]
+
+def test_regions():
+    output2 = torch.load('tests/output2.pt')
+    output1 = torch.load('tests/output1.pt')
+    img = cv2.imread('ski.jpg')
+    pafs = output1.transpose(1, 2).transpose(2, 3)
+    heatmaps = output2.transpose(1, 2).transpose(2, 3)
+    heatmap = heatmaps[0, :, :, :]
+    paf = pafs[0, :, :, :]
+    param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
+    persons, joint_list = get_person_to_join_assoc(img, param, heatmap.detach().numpy(), paf.detach().numpy())
+    persons = torch.from_numpy(persons).float()
+    find_regions(img, joint_list, persons)
+
+
 
 def test_outputs(model):
     # heatmap = torch.load('output2.pt')

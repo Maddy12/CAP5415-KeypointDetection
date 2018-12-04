@@ -9,8 +9,8 @@ import torch
 import sys
 
 #COCO
-from multipose_utils.dataset import COCO
-from multipose_utils.dataset.COCO.PythonAPI.pycocotools.cocoeval import COCOeval
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 
 # local
 from multipose_utils.dataset_utils.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
