@@ -455,12 +455,19 @@ def decode_pose(img_orig, param, heatmaps, pafs):
 
     # Step 4: filter out non-humans
     y_preds = find_regions(img_orig, joint_list, person_to_joint_assoc)
-    preds = np.argmax(y_preds[0].cpu().detach().numpy(), axis=1)
+    y_preds = [pred.cpu().detach().numpy() for pred in y_preds]
+    y_preds = np.concatenate(y_preds)
+    preds = np.argmax(y_preds, axis=1)
     idx = np.argwhere(preds)
-    person_to_joint_assoc = person_to_joint_assoc[idx]
-    joint_list = joint_list[idx]
-    person_to_joint_assoc = person_to_joint_assoc.reshape(person_to_joint_assoc.shape[0], person_to_joint_assoc.shape[-1])
-
+    if len(idx) > 0:
+        person_to_joint_assoc = np.take(person_to_joint_assoc, np.concatenate(idx), axis=0)
+        # person_to_joint_assoc = person_to_joint_assoc[idx]
+        # joint_list = joint_list[idx]
+        # person_to_joint_assoc = person_to_joint_assoc.reshape(person_to_joint_assoc.shape[0], person_to_joint_assoc.shape[-1])
+        # joint_list = joint_list.reshape(joint_list.shape[0], joint_list.shape[-1])
+    else:
+        person_to_joint_assoc = []
+        joint_list = []
     # (Step 5): plot results
     to_plot, canvas = plot_pose(img_orig, joint_list, person_to_joint_assoc)
     # canvas, to_plot, candidate, subset
