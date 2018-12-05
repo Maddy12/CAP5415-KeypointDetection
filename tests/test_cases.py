@@ -4,11 +4,11 @@ import torch
 import os
 from torchvision import transforms
 # Local
-from evaluate.coco_eval import *
+from evaluate.coco_eval_RETIRED import *
 from multipose_utils.dataset_utils.coco_data.preprocessing import vgg_preprocess
 from multipose_utils import im_transform
 from multipose_utils.multipose_model import get_model
-from multipose_utils.generate_pose import *
+from multipose_utils.generate_pose_RETIRED import *
 from multipose_utils.regions import find_regions
 
 person_to_joint_assoc = [[-1, 3, 7, 11, 14, 18,

@@ -4,8 +4,8 @@ import cv2
 from torchvision import transforms
 from PIL import Image
 # Local
-from multipose_utils.generate_pose import *
-from evaluate.coco_eval import *
+from multipose_utils.generate_pose_RETIRED import *
+from evaluate.coco_eval_RETIRED import *
 import pdb
 
 class RegionProposal(nn.Module):

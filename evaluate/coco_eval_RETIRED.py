@@ -1,22 +1,21 @@
 import os
 import time
+
 import cv2
 import numpy as np
 import json
 import pandas as pd
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 import torch
 import sys
 
-# Local
+#COCO
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
+# local
 from multipose_utils.dataset_utils.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
-from multipose_utils.post import decode_pose
+from multipose_utils.generate_pose_RETIRED import decode_pose
 from multipose_utils import im_transform
-from classifier_utils import classifier_model
-from evaluate.coco_eval_RETIRED import *
-from multipose_utils.layers import RegionProposal
-from multipose_utils import multipose_model
 
 '''
 MS COCO annotation order:
@@ -66,9 +65,6 @@ def eval_coco(outputs, dataDir, imgIds):
     cocoEval.accumulate()
     cocoEval.summarize()
     # os.remove('results.json')
-    #with open('/home/CAP5415-KeypointDetection/results.txt', 'w') as f:
-     #   f.write(cocoEval.stats[0])
-    print(cocoEval.stats)
     # return Average Precision
     return cocoEval.stats[0]
 
@@ -97,8 +93,9 @@ def get_coco_val(file_path):
     return image_ids, file_paths, heights, widths
 
 
-def get_outputs(multiplier, img, model, preprocess):
+def get_outputs(multiplier, img, model, preprocess, cuda=True):
     """Computes the averaged heatmap and paf for the given image
+    Step 1.
     :param multiplier:
     :param origImg: numpy array, the image being processed
     :param model: pytorch model
@@ -122,7 +119,7 @@ def get_outputs(multiplier, img, model, preprocess):
         # padding
         im_croped, im_scale, real_shape = im_transform.crop_with_factor(
             img, inp_size, factor=8, is_ceil=True)
-
+        assert preprocess in ['rtpose', 'vgg', 'inception', 'ssd'], "Please provide a valid preprocessig param"
         if preprocess == 'rtpose':
             im_data = rtpose_preprocess(im_croped)
 
@@ -138,12 +135,16 @@ def get_outputs(multiplier, img, model, preprocess):
         batch_images[m, :, :im_data.shape[1], :im_data.shape[2]] = im_data
 
     # several scales as a batch
-    batch_var = torch.from_numpy(batch_images).cuda().float()
+    if cuda:
+        batch_var = torch.from_numpy(batch_images).cuda().float()
+    else:
+        batch_var = torch.from_numpy(batch_images).float()
     predicted_outputs, _ = model(batch_var)
     output1, output2 = predicted_outputs[-2], predicted_outputs[-1]
     heatmaps = output2.cpu().data.numpy().transpose(0, 2, 3, 1)
     pafs = output1.cpu().data.numpy().transpose(0, 2, 3, 1)
 
+   # Resizes the image
     for m in range(len(multiplier)):
         scale = multiplier[m]
         inp_size = scale * img.shape[0]
@@ -183,7 +184,7 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
     for ridxPred in range(len(person_to_joint_assoc)):
         one_result = {
             "image_id": 0,
-            "category_id": 1,
+            "category_id": 1,  # prefixed to 1
             "keypoints": [],
             "score": 0
         }
@@ -254,14 +255,14 @@ def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
     flipped_paf[:, :, swap_paf[1::2]] = flipped_paf[:, :, swap_paf[1::2]]
     flipped_paf[:, :, swap_paf[::2]] = -flipped_paf[:, :, swap_paf[::2]]
     averaged_paf = (normal_paf + flipped_paf[:, :, swap_paf]) / 2.
-    averaged_heatmap = (
-                               normal_heat + flipped_heat[:, ::-1, :][:, :, swap_heat]) / 2.
+    averaged_heatmap = (normal_heat + flipped_heat[:, ::-1, :][:, :, swap_heat]) / 2.
 
     return averaged_paf, averaged_heatmap
 
 
 def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
     """Run the evaluation on the test set and report mAP score
+    Get output of model for original image and flipped image than average them.
     :param model: the model to test
     :returns: float, the reported mAP score
     """
@@ -303,9 +304,10 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
+        #to_plot, canvas, joint_list, person_to_joint_assoc
 
-        vis_path = os.path.join(vis_dir, img_paths[i])
-        cv2.imwrite(vis_path, to_plot)
+        # vis_path = os.path.join(vis_dir, img_paths[i])
+        # cv2.imwrite(vis_path, to_plot)
         # subset indicated how many peoples foun in this image.
         append_result(img_ids[i], subset, candidate, outputs)
 
