@@ -282,17 +282,16 @@ def get_multipose_model(model_path, cuda=True):
         # this path is with respect to the root of the project
         state_dict = torch.load(model_path)['state_dict']
         model = get_model(trunk='vgg19')
+        new_state_dict = OrderedDict()
+        for key in state_dict.keys():
+            new_state_dict[key.replace('module.', '')] = state_dict[key]
+        model.load_state_dict(new_state_dict)
         if cuda:
             model = nn.DataParallel(model).cuda()
-            model.load_state_dict(state_dict)
             model = torch.nn.DataParallel(model)
             model = model.cuda()
         else:
             model = model.to('cpu')
-            new_state_dict = OrderedDict()
-            for key in state_dict.keys():
-                new_state_dict[key.replace('module.', '')] = state_dict[key]
-            model.load_state_dict(new_state_dict)
         model.eval()
         model.float()
     return model
