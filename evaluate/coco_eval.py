@@ -179,38 +179,42 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
     :param outputs: list of dictionaries with the following keys: image_id,
                     category_id, keypoints, score
     """
+    try:
+        outputs = list()
+        for ridxPred in range(len(person_to_joint_assoc)):
+            one_result = {
+                "image_id": 0,
+                "category_id": 1,
+                "keypoints": [],
+                "score": 0
+            }
 
-    for ridxPred in range(len(person_to_joint_assoc)):
-        one_result = {
-            "image_id": 0,
-            "category_id": 1,
-            "keypoints": [],
-            "score": 0
-        }
+            one_result["image_id"] = image_id
+            keypoints = np.zeros((17, 3))
 
-        one_result["image_id"] = image_id
-        keypoints = np.zeros((17, 3))
+            for part in range(17):
+                ind = ORDER_COCO[part]
+                index = int(person_to_joint_assoc[ridxPred, ind])
 
-        for part in range(17):
-            ind = ORDER_COCO[part]
-            index = int(person_to_joint_assoc[ridxPred, ind])
+                if -1 == index:
+                    keypoints[part, 0] = 0
+                    keypoints[part, 1] = 0
+                    keypoints[part, 2] = 0
 
-            if -1 == index:
-                keypoints[part, 0] = 0
-                keypoints[part, 1] = 0
-                keypoints[part, 2] = 0
+                else:
+                    keypoints[part, 0] = joint_list[index, 0] + 0.5
+                    keypoints[part, 1] = joint_list[index, 1] + 0.5
+                    keypoints[part, 2] = 1
 
-            else:
-                keypoints[part, 0] = joint_list[index, 0] + 0.5
-                keypoints[part, 1] = joint_list[index, 1] + 0.5
-                keypoints[part, 2] = 1
+            one_result["score"] = person_to_joint_assoc[ridxPred, -2] * \
+                                  person_to_joint_assoc[ridxPred, -1]
+            one_result["keypoints"] = list(keypoints.reshape(51))
 
-        one_result["score"] = person_to_joint_assoc[ridxPred, -2] * \
-                              person_to_joint_assoc[ridxPred, -1]
-        one_result["keypoints"] = list(keypoints.reshape(51))
-
-        outputs.append(one_result)
-
+            outputs.append(one_result)
+        return outputs
+    except Exception as e:
+        error = e
+        import pdb;pdb.set_trace
 
 def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
     """Compute the average of normal and flipped heatmap and paf

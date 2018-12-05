@@ -3,7 +3,8 @@ from PIL import Image
 import torch
 from torch import nn
 import numpy as np
-
+from classifier_utils import classifier_model
+import gc 
 
 joint_to_limb_heatmap_relationship = [
     [1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [1, 8], [8, 9], [9, 10],
@@ -13,12 +14,12 @@ BUFFER_VERT = 10
 BUFFER_HORIZ = 5
 
 
-def find_regions(model, img_orig, joint_list, person_to_joint_assoc):
+def find_regions(model_path, img_orig, joint_list, person_to_joint_assoc):
     """ Find regions of potential humans
         by fisding the the max and min points with respect
         to the x and y direction for each delcareed human then
         produce the region of the image associated with those points """
-
+    model = classifier_model.get_model(model_path)
     # For Each person
     y_preds = list()
     for person_joint_info in person_to_joint_assoc:
@@ -82,6 +83,8 @@ def find_regions(model, img_orig, joint_list, person_to_joint_assoc):
         y_pred = model(thisRegionVar)
         smax = nn.Softmax()
         y_preds.append(smax(y_pred))
+    del model
+    gc.collect()
     return np.array(y_preds)
 
 

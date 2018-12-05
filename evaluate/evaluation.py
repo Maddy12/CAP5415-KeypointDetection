@@ -1,5 +1,6 @@
 import sys
 sys.path.append('..')
+import gc
 
 # Local
 from evaluate.coco_eval import *
@@ -23,35 +24,42 @@ def run_eval(multipose, classifier, image_dir, anno_dir, vis_dir, image_list_txt
     outputs = []
     print("Processing Images in validation set")
     for i in range(len(img_ids)):
+        torch.cuda.empty_cache()
         if i % 10 == 0 and i != 0:
             print("Processed {} images".format(i))
-
         oriImg = cv2.imread(os.path.join(image_dir, 'val2014/' + img_paths[i]))
         shape_dst = np.min(oriImg.shape[0:2])
 
         multiplier = get_multiplier(oriImg)
-        orig_paf, orig_heat = get_outputs(
-            multiplier, oriImg, multipose, preprocess)
+        print("Getting output for {}".format(img_ids[i]))
+        orig_paf, orig_heat = get_outputs( multiplier, oriImg, multipose, preprocess)
 
-        swapped_img = oriImg[:, ::-1, :]
-        flipped_paf, flipped_heat = get_outputs(multiplier, swapped_img, multipose, preprocess)
+        #swapped_img = oriImg[:, ::-1, :]
+        #flipped_paf, flipped_heat = get_outputs(multiplier, swapped_img, multipose, preprocess)
 
-        paf, heatmap = handle_paf_and_heat(
-            orig_heat, flipped_heat, orig_paf, flipped_paf)
+        #paf, heatmap = handle_paf_and_heat(orig_heat, flipped_heat, orig_paf, flipped_paf)
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
-        person_to_joint_assoc, joint_list = get_persons(oriImg, param, heatmap, paf)
+        print("Getting persons")
+        person_to_joint_assoc, joint_list = get_persons(oriImg, param, orig_heat, orig_paf)
+        print("Classifying regions")
         y_preds = find_regions(classifier, oriImg, joint_list, person_to_joint_assoc)
+        del oriImg
         preds = np.argmax(y_preds[0].cpu().detach().numpy(), axis=1)
         idx = np.argwhere(preds)
+        del orig_paf
+        del orig_heat
         try:
             filtered = person_to_joint_assoc[idx]
+            filtered_joints = joint_list[idx]
             filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
-            append_result(img_ids[i], filtered, joint_list, outputs)
+            print("Appending results")
+            outputs.append(append_result(img_ids[i], filtered, filtered_joints, outputs))
+            print(outputs)
         except Exception as e:
             error = e
             import pdb;
             pdb.set_trace()
-        append_result(img_ids[i], filtered, joint_list, outputs)
+        gc.collect()
     eval_coco(outputs=outputs, dataDir=anno_dir, imgIds=img_ids)
 
 
@@ -69,8 +77,8 @@ if __name__ == '__main__':
 
     # Init Models
     multipose = get_multipose_model(model_path)
-    classifier = classifier_model.get_model(post_model_path)
-    run_eval(multipose, classifier, image_dir, anno_dir, vis_dir, image_list_txt, preprocess)
+    # classifier = classifier_model.get_model(post_model_path)
+    run_eval(multipose, post_model_path, image_dir, anno_dir, vis_dir, image_list_txt, preprocess)
 
 
 
