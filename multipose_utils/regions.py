@@ -63,11 +63,6 @@ def find_regions(model, img_orig, joint_list, person_to_joint_assoc):
         if maxY == minY:
             maxY = maxY + 1
 
-        print(maxX)
-        print(minX)
-        print(maxY)
-        print(minY)
-
         thisRegion = img_orig[minY:maxY, minX:maxX, :]
 
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])

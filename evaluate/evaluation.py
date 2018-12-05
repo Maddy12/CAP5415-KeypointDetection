@@ -41,10 +41,10 @@ def run_eval(multipose, classifier, image_dir, anno_dir, vis_dir, image_list_txt
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         person_to_joint_assoc, joint_list = get_persons(oriImg, param, heatmap, paf)
         y_preds = find_regions(classifier, oriImg, joint_list, person_to_joint_assoc)
-        preds = np.argmax(y_preds.cpu().detach().numpy(), axis=1)
-        idx = np.argwhere(np.asarray(preds))
+        preds = np.argmax(y_preds[0].cpu().detach().numpy(), axis=1)
+        idx = np.argwhere(preds)
         try:
-            filtered = person_to_joint_assoc[idx[0]]
+            filtered = person_to_joint_assoc[idx]
             filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
             append_result(img_ids[i], filtered, joint_list, outputs)
         except Exception as e:
@@ -63,7 +63,8 @@ if __name__ == '__main__':
     anno_dir = os.path.join(main_dir, 'dataset/COCO_data/annotations')
     vis_dir = os.path.join(main_dir, 'dataset/COCO_data/vis')
     preprocess = 'rtpose'
-    post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
+    # post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
+    post_model_path = '/home/model_best.pth.tar'
     image_list_txt = os.path.join(main_dir, 'evaluate/image_info_val2014_1k.txt')
 
     # Init Models
