@@ -1,15 +1,17 @@
-from multipose_utils.multipose_model import get_model
+import os
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import sys
-import os
 import numpy as np
 from torch import nn
 
-sys.path.append('..')
+
 import torch
 import cv2
 from collections import OrderedDict
+
+sys.path.append('..')
+from multipose_utils.multipose_model import get_model
 from classifier_utils import classifier_model
 from evaluate.coco_eval import *
 from multipose_utils.layers import RegionProposal
@@ -79,14 +81,13 @@ def run_evaluation(model_path, post_model_path, image_dir, output_dir, anno_path
 
 
 if __name__ == '__main__':
-    os.chdir('..')
-    main_dir = r'multipose_utils\\'
-    image_dir = main_dir + r'\dataset\COCO\images'
-    model_path = main_dir + r'multipose_model\coco_pose_iter_440000.pth.tar'
-    output_dir = r'\results'
-    anno_path = main_dir + r'\dataset\COCO\annotations'
-    vis_dir = '/data/coco/vis'
+    main_dir = '/home/CAP5415-KeypointDetection/'
+    image_dir = os.path.join(main_dir, 'dataset/COCO_data/images')
+    model_path = os.path.join(main_dir, 'multipose_utils/multipose_model/coco_pose_iter_440000.pth.tar')
+    output_dir = os.path.join(main_dir, 'results')
+    anno_path = os.path.join(main_dir, 'dataset/COCO_data/annotations')
+    vis_dir = os.path.join(main_dir, 'dataset/COCO_data/vis')
     preprocess = 'rtpose'
-    post_model_path = 'classifier_utils/model_best.pth.tar',
-    image_list_txt = 'image_info_val2014_1k.txt'
+    post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
+    image_list_txt = os.path.join(main_dir, 'evaluate/image_info_val2014_1k.txt')
     run_evaluation(model_path, post_model_path, image_dir, output_dir, anno_path, vis_dir, image_list_txt)
