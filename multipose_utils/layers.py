@@ -6,7 +6,7 @@ from PIL import Image
 # Local
 from multipose_utils.generate_pose import *
 from evaluate.coco_eval import *
-
+import pdb
 
 class RegionProposal(nn.Module):
     def __init__(self, output1, output2, oriImg, model):
@@ -20,8 +20,8 @@ class RegionProposal(nn.Module):
         :param img_origs: List of image paths
         :param model: Model
         """
-        self.pafs = output1.transpose(0,2 ).transpose(0,1)  # .transpose(1, 2).transpose(2, 3)
-        self.heatmaps = output2.transpose(0,2 ).transpose(0,1).shape  # .transpose(1, 2).transpose(2, 3)
+        self.paf =output1  # .transpose(0,1 ).transpose(0,2)  # .transpose(0,2 ).transpose(0,1)  # .transpose(1, 2).transpose(2, 3)
+        self.heatmap = output2  #.transpose(0,1 ).transpose(0,2)  # .transpose(0,2 ).transpose(0,1).shape  # .transpose(1, 2).transpose(2, 3)
         self.param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         self.num_joints = NUM_JOINTS
         self.num_limbs = NUM_LIMBS
@@ -44,21 +44,26 @@ class RegionProposal(nn.Module):
         :return:
         """
         persons, joint_list = get_person_to_join_assoc(self.oriImg, self.param,
-                                           self.heatmap.detach().numpy(), self.paf.detach().numpy())
+                                           self.heatmap, self.paf)
         persons = torch.from_numpy(persons).float()
         regions, bounds = self.find_regions(self.oriImg, joint_list, persons)
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         final_transform = transforms.Compose([
-            transforms.Resize(256),
+            transforms.Scale(256),
             transforms.CenterCrop(224),
+            transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
         ])
-        regions = torch.stack([final_transform(Image.fromarray(region)) for region in regions])
+        regions = torch.stack([torch.autograd.Variable(final_transform(Image.fromarray(region))) for region in regions])
         y_pred = self.model(regions)
-        preds = np.argmax(y_pred.detach().numpy(), axis=1)
+        preds = np.argmax(y_pred.cpu().detach().numpy(), axis=1)
         idx = np.argwhere(np.asarray(preds))
-        filtered = persons[idx]
+        try:
+            filtered = persons[idx[0]]
+        except Exception as e:
+            error = e
+            import pdb; pdb.set_trace()
         filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
         # to_plot, canvas = plot_pose(self.oriImg, joint_list, filtered)
         # append_result(self.oriImg_path, filtered, joint_list, outputs)

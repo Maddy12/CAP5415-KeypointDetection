@@ -52,9 +52,7 @@ class Evaluate(nn.Module):
         return paf, heatmap
 
     def run(self, outputs):
-        self.results = run_eval(image_dir=self._image_dir, anno_dir=self._anno_path, vis_dir=self._vis_dir,
-                                image_list_txt=self.image_list_txt,
-                                model=self.model, preprocess='rtpose')
+        self.results = eval_coco(outputs=outputs, dataDir=self._anno_dir, imgIds=sself._img_ids)
 
 
 def run_evaluation(model_path, post_model_path, image_dir, output_dir, anno_path, vis_dir, image_list_txt):
@@ -73,7 +71,8 @@ def run_evaluation(model_path, post_model_path, image_dir, output_dir, anno_path
         if i % 10 == 0 and i != 0:
             print("Processed {} images".format(i))
         paf, heatmap = eval.forward(img_paths[i])
-        regions = RegionProposal(paf, heatmap, img_paths[i], classifier)
+        img_path = os.path.join(image_dir, 'val2014/' + img_paths[i])
+        regions = RegionProposal(paf, heatmap, img_path, classifier)
         oriImg_path, filtered, joint_list = regions.forward()
         append_result(oriImg_path, filtered, joint_list, outputs)
     eval.run(outputs)
