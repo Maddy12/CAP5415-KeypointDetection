@@ -1,85 +1,40 @@
+from coco_eval import run_eval
+from multipose_utils.multipose_model import get_model
 import sys
 sys.path.append('..')
-import gc
+import torch
+from collections import OrderedDict
 
-# Local
-from evaluate.coco_eval import *
-from multipose_utils.post import get_persons
-from multipose_utils.multipose_model import get_multipose_model
-from classifier_utils import classifier_model
-from multipose_utils.regions import find_regions
+# Notice, if you using the
+with torch.autograd.no_grad():
+    # this path is with respect to the root of the project
+    # main_dir = r'C:\Users\maddy\OneDrive - Knights - University of Central Florida\CAP5415-KeypointDetection'
+    main_dir = '/home/CAP5415-KeypointDetection'
+    model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
 
+    state_dict = torch.load(model_path)['state_dict']
+    new_state_dict = OrderedDict()
+    for key in state_dict.keys():
+        new_state_dict['module.'+key] = state_dict[key]
+    model = get_model(trunk='vgg19')
+    # model = construct_model(model_path)
+    model = torch.nn.DataParallel(model).cuda()
+    model.load_state_dict(new_state_dict)
+    model.eval()
+    model.float()
+    model = model.cuda()
 
-def run_eval(multipose, classifier, image_dir, anno_dir, vis_dir, image_list_txt, preprocess):
-    """Run the evaluation on the test set and report mAP score
-    :param model: the model to test
-    :returns: float, the reported mAP score
-    """
-    # This txt file is fount in the caffe_rtpose repository:
-    # https://github.com/CMU-Perceptual-Computing-Lab/caffe_rtpose/blob/master
-    img_ids, img_paths, img_heights, img_widths = get_coco_val(
-        image_list_txt)
-    print("Total number of validation images {}".format(len(img_ids)))
-    # iterate all val images
-    outputs = []
-    print("Processing Images in validation set")
-    for i in range(len(img_ids)):
-        torch.cuda.empty_cache()
-        if i % 10 == 0 and i != 0:
-            print("Processed {} images".format(i))
-        oriImg = cv2.imread(os.path.join(image_dir, 'val2014/' + img_paths[i]))
-        shape_dst = np.min(oriImg.shape[0:2])
-
-        multiplier = get_multiplier(oriImg)
-        print("Getting output for {}".format(img_ids[i]))
-        orig_paf, orig_heat = get_outputs( multiplier, oriImg, multipose, preprocess)
-
-        #swapped_img = oriImg[:, ::-1, :]
-        #flipped_paf, flipped_heat = get_outputs(multiplier, swapped_img, multipose, preprocess)
-
-        #paf, heatmap = handle_paf_and_heat(orig_heat, flipped_heat, orig_paf, flipped_paf)
-        param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
-        print("Getting persons")
-        person_to_joint_assoc, joint_list = get_persons(oriImg, param, orig_heat, orig_paf)
-        print("Classifying regions")
-        y_preds = find_regions(classifier, oriImg, joint_list, person_to_joint_assoc)
-        del oriImg
-        preds = np.argmax(y_preds[0].cpu().detach().numpy(), axis=1)
-        idx = np.argwhere(preds)
-        del orig_paf
-        del orig_heat
-        try:
-            filtered = person_to_joint_assoc[idx]
-            filtered_joints = joint_list[idx]
-            filtered = filtered.reshape(filtered.shape[0], filtered.shape[-1])
-            print("Appending results")
-            outputs.append(append_result(img_ids[i], filtered, filtered_joints, outputs))
-            print(outputs)
-        except Exception as e:
-            error = e
-            import pdb;
-            pdb.set_trace()
-        gc.collect()
-    eval_coco(outputs=outputs, dataDir=anno_dir, imgIds=img_ids)
-
-
-if __name__ == '__main__':
-    main_dir = '/home/CAP5415-KeypointDetection/'
-    image_dir = os.path.join(main_dir, 'dataset/COCO_data/images')
-    model_path = os.path.join(main_dir, 'multipose_utils/multipose_model/coco_pose_iter_440000.pth.tar')
-    output_dir = os.path.join(main_dir, 'results')
-    anno_dir = os.path.join(main_dir, 'dataset/COCO_data/annotations')
-    vis_dir = os.path.join(main_dir, 'dataset/COCO_data/vis')
-    preprocess = 'rtpose'
-    # post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
-    post_model_path = '/home/model_best.pth.tar'
-    image_list_txt = os.path.join(main_dir, 'evaluate/image_info_val2014_1k.txt')
-
-    # Init Models
-    multipose = get_multipose_model(model_path)
-    # classifier = classifier_model.get_model(post_model_path)
-    run_eval(multipose, post_model_path, image_dir, anno_dir, vis_dir, image_list_txt, preprocess)
-
-
+    # The choice of image preprocessing include: 'rtpose', 'inception', 'vgg' and 'ssd'.
+    # If you use the converted model from caffe, it is 'rtpose' preprocess, the model trained in
+    # this repo used 'vgg' preprocess
+    image_dir = main_dir + '/dataset/COCO/images'
+    model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
+    output_dir = '/results'
+    anno_path = main_dir + '/dataset/COCO/'
+    vis_dir = main_dir + '/dataset/COCO/vis'
+    run_eval(image_dir=image_dir, anno_dir=anno_path, vis_dir='/data/coco/vis',
+             image_list_txt='image_info_val2014_1k.txt',
+    #         image_list_txt='image_info_val2014_10.txt',
+             model=model, preprocess='rtpose')
 
 

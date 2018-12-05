@@ -5,6 +5,7 @@ import matplotlib.cm
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter, maximum_filter
 from scipy.ndimage.morphology import generate_binary_structure
+from multipose_utils.regions import find_regions
 
 # It is better to use 0.1 as threshold when evaluation, but 0.3 for demo
 # purpose.
@@ -452,7 +453,15 @@ def decode_pose(img_orig, param, heatmaps, pafs):
     person_to_joint_assoc = group_limbs_of_same_person(
         connected_limbs, joint_list)
 
-    # (Step 4): plot results
+    # Step 4: filter out non-humans
+    y_preds = find_regions(img_orig, joint_list, person_to_joint_assoc)
+    preds = np.argmax(y_preds[0].cpu().detach().numpy(), axis=1)
+    idx = np.argwhere(preds)
+    person_to_joint_assoc = person_to_joint_assoc[idx]
+    joint_list = joint_list[idx]
+    person_to_joint_assoc = person_to_joint_assoc.reshape(person_to_joint_assoc.shape[0], person_to_joint_assoc.shape[-1])
+
+    # (Step 5): plot results
     to_plot, canvas = plot_pose(img_orig, joint_list, person_to_joint_assoc)
     # canvas, to_plot, candidate, subset
     return to_plot, canvas, joint_list, person_to_joint_assoc

@@ -5,21 +5,28 @@ from torch import nn
 import numpy as np
 from classifier_utils import classifier_model
 import gc 
-
+from torchvision import models
 joint_to_limb_heatmap_relationship = [
     [1, 2], [1, 5], [2, 3], [3, 4], [5, 6], [6, 7], [1, 8], [8, 9], [9, 10],
     [1, 11], [11, 12], [12, 13], [1, 0], [0, 14], [14, 16], [0, 15], [15, 17],
     [2, 16], [5, 17]]
 BUFFER_VERT = 10
 BUFFER_HORIZ = 5
+modelFileName = '/home/model_best.pth.tar'
 
-
-def find_regions(model_path, img_orig, joint_list, person_to_joint_assoc):
+def find_regions(img_orig, joint_list, person_to_joint_assoc):
     """ Find regions of potential humans
         by fisding the the max and min points with respect
         to the x and y direction for each delcareed human then
         produce the region of the image associated with those points """
-    model = classifier_model.get_model(model_path)
+    # Init model
+    model = models.__dict__['resnet152'](pretrained=True)
+    model.fc = nn.Linear(2048, 2)
+    model = torch.nn.DataParallel(model).cuda()
+    checkpoint = torch.load(modelFileName)
+    model.load_state_dict(checkpoint['state_dict'])
+    model.eval()
+    
     # For Each person
     y_preds = list()
     for person_joint_info in person_to_joint_assoc:
@@ -85,7 +92,7 @@ def find_regions(model_path, img_orig, joint_list, person_to_joint_assoc):
         y_preds.append(smax(y_pred))
     del model
     gc.collect()
-    return np.array(y_preds)
+    return y_preds
 
 
 
