@@ -1,18 +1,23 @@
 import os
 import time
-
 import cv2
 import numpy as np
 import json
 import pandas as pd
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-
 import torch
 import sys
-from datasets.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
-from post import decode_pose
-import im_transform
+
+# Local
+sys.path.append('..')
+from multipose_utils.dataset_utils.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
+from multipose_utils.post import decode_pose
+from multipose_utils import im_transform
+from classifier_utils import classifier_model
+# from evaluate.coco_eval_RETIRED import *
+# from multipose_utils.layers import RegionProposal
+from multipose_utils import multipose_model
 
 '''
 MS COCO annotation order:
@@ -175,38 +180,40 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
     :param outputs: list of dictionaries with the following keys: image_id,
                     category_id, keypoints, score
     """
+    try:
+        for ridxPred in range(len(person_to_joint_assoc)):
+            one_result = {
+                "image_id": 0,
+                "category_id": 1,
+                "keypoints": [],
+                "score": 0
+            }
 
-    for ridxPred in range(len(person_to_joint_assoc)):
-        one_result = {
-            "image_id": 0,
-            "category_id": 1,
-            "keypoints": [],
-            "score": 0
-        }
+            one_result["image_id"] = image_id
+            keypoints = np.zeros((17, 3))
 
-        one_result["image_id"] = image_id
-        keypoints = np.zeros((17, 3))
+            for part in range(17):
+                ind = ORDER_COCO[part]
+                index = int(person_to_joint_assoc[ridxPred, ind])
 
-        for part in range(17):
-            ind = ORDER_COCO[part]
-            index = int(person_to_joint_assoc[ridxPred, ind])
+                if -1 == index:
+                    keypoints[part, 0] = 0
+                    keypoints[part, 1] = 0
+                    keypoints[part, 2] = 0
 
-            if -1 == index:
-                keypoints[part, 0] = 0
-                keypoints[part, 1] = 0
-                keypoints[part, 2] = 0
+                else:
+                    keypoints[part, 0] = joint_list[index, 0] + 0.5
+                    keypoints[part, 1] = joint_list[index, 1] + 0.5
+                    keypoints[part, 2] = 1
 
-            else:
-                keypoints[part, 0] = joint_list[index, 0] + 0.5
-                keypoints[part, 1] = joint_list[index, 1] + 0.5
-                keypoints[part, 2] = 1
+            one_result["score"] = person_to_joint_assoc[ridxPred, -2] * \
+                                  person_to_joint_assoc[ridxPred, -1]
+            one_result["keypoints"] = list(keypoints.reshape(51))
 
-        one_result["score"] = person_to_joint_assoc[ridxPred, -2] * \
-                              person_to_joint_assoc[ridxPred, -1]
-        one_result["keypoints"] = list(keypoints.reshape(51))
-
-        outputs.append(one_result)
-
+            outputs.append(one_result)
+    except Exception as e:
+        error = e
+        import pdb;pdb.set_trace
 
 def handle_paf_and_heat(normal_heat, flipped_heat, normal_paf, flipped_paf):
     """Compute the average of normal and flipped heatmap and paf
@@ -278,7 +285,7 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
 
         oriImg = cv2.imread(os.path.join(image_dir, 'val2014/' + img_paths[i]))
         # Get the shortest side of the image (either height or width)
-        shape_dst = np.min(oriImg.shape[0:2])
+        # shape_dst = np.min(oriImg.shape[0:2])
 
         # Get results of original image
         multiplier = get_multiplier(oriImg)
@@ -299,12 +306,11 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
-
+         
         vis_path = os.path.join(vis_dir, img_paths[i])
         cv2.imwrite(vis_path, to_plot)
         # subset indicated how many peoples foun in this image.
         append_result(img_ids[i], subset, candidate, outputs)
-
         # cv2.imshow('test', canvas)
         # cv2.waitKey(0)
     # Eval and show the final result!
