@@ -26,6 +26,7 @@ rm -f val2014.zip
 You will also need to download the weight paths locally due to their size:
 The classifier can be downloaded by the following link and should be stored in path 'classifier_utils/'
 * https://drive.google.com/file/d/1xJP3o0gdHl3G2CfrfD5a68_bgUaz_PIZ/view?usp=sharing
+
 The multipose-model weights can be downloaded by the following link and should be stored in path 'multipose_utils/multipose_model/'
 * https://drive.google.com/file/d/1xJP3o0gdHl3G2CfrfD5a68_bgUaz_PIZ/view?usp=sharing
 
