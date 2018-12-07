@@ -33,13 +33,12 @@ The multipose-model weights can be downloaded by the following link and should b
 ## Run
 Make the respeective changes to the passed filepaths based on your directory structure and then run in Python3+ evaluation.py. 
 ```python
-main_dir = '/home/CAP5415-KeypointDetection'
-model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
-
-image_dir = main_dir + '/dataset/COCO/images'
-model_path = main_dir + '/coco_pose_iter_440000.pth.tar'
-output_dir = '/results'
-anno_path = main_dir + '/dataset/COCO/'
-vis_dir = main_dir + '/dataset/COCO/vis'
+main_dir = '/home/CAP5415-KeypointDetection/'
+image_dir = os.path.join(main_dir, 'dataset/COCO_data/images')
+model_path = os.path.join(main_dir, 'multipose_utils/multipose_model/coco_pose_iter_440000.pth.tar')
+output_dir = os.path.join(main_dir, 'results')
+anno_dir = os.path.join(main_dir, 'dataset/COCO_data/')
+vis_dir = os.path.join(main_dir, 'dataset/COCO_data/vis')
+post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
 ```
 The scripts processes ~1000 images set aside for validation by the author of the original paper. The results will be output in the command line. 
