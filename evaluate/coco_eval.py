@@ -279,7 +279,7 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
     # iterate all val images
     outputs = []
     print("Processing Images in validation set")
-    for i in range(3):  #len(img_ids)):
+    for i in range(len(img_ids)):
         if i % 10 == 0 and i != 0:
             print("Processed {} images".format(i))
 
