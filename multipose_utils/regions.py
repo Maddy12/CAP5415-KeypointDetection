@@ -26,7 +26,7 @@ def find_regions(img_orig, joint_list, person_to_joint_assoc):
     checkpoint = torch.load(modelFileName)
     model.load_state_dict(checkpoint['state_dict'])
     model.eval()
-    
+
     # For Each person
     y_preds = list()
     for person_joint_info in person_to_joint_assoc:
