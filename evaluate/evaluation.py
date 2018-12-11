@@ -20,7 +20,7 @@ if __name__ == '__main__':
         vis_dir = os.path.join(main_dir, 'dataset/COCO_data/vis')
         preprocess = 'rtpose'
         # post_model_path = os.path.join(main_dir, 'classifier_utils/model_best.pth.tar')
-        post_model_path = '/home/model_best.pth.tar'
+        post_model_path = os.path.join(main_dir, 'classifier_utils/trained_models/model_best_resnet101.pth.tar')
         image_list_txt = os.path.join(main_dir, 'evaluate/image_info_val2014_1k.txt')
 
         state_dict = torch.load(model_path)['state_dict']

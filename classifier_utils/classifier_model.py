@@ -1,10 +1,10 @@
 import torchvision.models as models
-from torchvision.models import vgg19, alexnet, resnet152
+from torchvision.models import vgg19, alexnet, resnet152, resnet18, resnet101
 from torch import nn, load
 from collections import OrderedDict
 
 
-def get_model(classifier, pretrained=False, weight_path='classifier_utils/model_best.pth.tar', cuda=True):
+def get_model(classifier, pretrained=False, weight_path=None, cuda=True):
     """
     :param str classifier:
     :param bool pretrained:
@@ -12,9 +12,13 @@ def get_model(classifier, pretrained=False, weight_path='classifier_utils/model_
     :param bool cuda:
     :return:
     """
-    assert classifier in ['resnet', 'vgg', 'alexnet'], "Please provide a model: resnet, vgg, alexnet"
-    if classifier == 'resnet':
+    assert classifier in ['resnet101', 'resnet18', 'vgg', 'alexnet'], "Please provide a model: resnet, vgg, alexnet"
+    if classifier == 'resnet152':
         model = resnet152(pretrained=pretrained)
+    if classifier == 'resnet101':
+        model = resnet101(pretrained=pretrained)
+    if classifier == 'resnet18':
+        model = resnet18(pretrained=pretrained)
     if classifier == 'vgg':
         model = vgg19(pretrained=pretrained)
     if classifier ==  'alexnet':
