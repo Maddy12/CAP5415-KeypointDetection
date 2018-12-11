@@ -10,12 +10,13 @@ import torch
 import sys
 
 # Local
+sys.path.append('..')
 from multipose_utils.dataset_utils.coco_data.preprocessing import (inception_preprocess, rtpose_preprocess, ssd_preprocess, vgg_preprocess)
 from multipose_utils.post import decode_pose
 from multipose_utils import im_transform
 from classifier_utils import classifier_model
-from evaluate.coco_eval_RETIRED import *
-from multipose_utils.layers import RegionProposal
+# from evaluate.coco_eval_RETIRED import *
+# from multipose_utils.layers import RegionProposal
 from multipose_utils import multipose_model
 
 '''
@@ -180,7 +181,6 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
                     category_id, keypoints, score
     """
     try:
-        outputs = list()
         for ridxPred in range(len(person_to_joint_assoc)):
             one_result = {
                 "image_id": 0,
@@ -211,7 +211,6 @@ def append_result(image_id, person_to_joint_assoc, joint_list, outputs):
             one_result["keypoints"] = list(keypoints.reshape(51))
 
             outputs.append(one_result)
-        return outputs
     except Exception as e:
         error = e
         import pdb;pdb.set_trace
@@ -286,7 +285,7 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
 
         oriImg = cv2.imread(os.path.join(image_dir, 'val2014/' + img_paths[i]))
         # Get the shortest side of the image (either height or width)
-        shape_dst = np.min(oriImg.shape[0:2])
+        # shape_dst = np.min(oriImg.shape[0:2])
 
         # Get results of original image
         multiplier = get_multiplier(oriImg)
@@ -307,12 +306,11 @@ def run_eval(image_dir, anno_dir, vis_dir, image_list_txt, model, preprocess):
         param = {'thre1': 0.1, 'thre2': 0.05, 'thre3': 0.5}
         canvas, to_plot, candidate, subset = decode_pose(
             oriImg, param, heatmap, paf)
-
+         
         vis_path = os.path.join(vis_dir, img_paths[i])
         cv2.imwrite(vis_path, to_plot)
         # subset indicated how many peoples foun in this image.
         append_result(img_ids[i], subset, candidate, outputs)
-
         # cv2.imshow('test', canvas)
         # cv2.waitKey(0)
     # Eval and show the final result!
