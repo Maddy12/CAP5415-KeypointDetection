@@ -3,7 +3,7 @@ from PIL import Image
 import torch
 from torch import nn
 import numpy as np
-from classifier_utils import classifier_model
+from classifier_utils.classifier_model import get_model
 import gc 
 from torchvision import models
 joint_to_limb_heatmap_relationship = [
@@ -14,18 +14,14 @@ BUFFER_VERT = 10
 BUFFER_HORIZ = 5
 modelFileName = '/home/model_best.pth.tar'
 
-def find_regions(img_orig, joint_list, person_to_joint_assoc):
+
+def find_regions(img_orig, model_type, joint_list, person_to_joint_assoc, pretrained=False, weight_path=None):
     """ Find regions of potential humans
         by fisding the the max and min points with respect
         to the x and y direction for each delcareed human then
         produce the region of the image associated with those points """
     # Init model
-    model = models.__dict__['resnet152'](pretrained=True)
-    model.fc = nn.Linear(2048, 2)
-    model = torch.nn.DataParallel(model).cuda()
-    checkpoint = torch.load(modelFileName)
-    model.load_state_dict(checkpoint['state_dict'])
-    model.eval()
+    model = get_model(model_type, pretrained, weight_path)
 
     # For Each person
     y_preds = list()
@@ -75,10 +71,10 @@ def find_regions(img_orig, joint_list, person_to_joint_assoc):
 
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         preprocess = transforms.Compose([
-            #                                 transforms.Lambda(shear),
+            # transforms.Lambda(shear),
             transforms.Scale(256),
             transforms.CenterCrop(224),
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
         ])
